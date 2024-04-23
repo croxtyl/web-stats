@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Stats</title>
+    <script src="/public/chart.js"></script>
+    <style>
+        body {
+    background-color: #222;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+h1 {
+    margin-top: 20px;
+}
+h2 {
+    margin-top: 40px;
+}
+ul {
+    list-style: none;
+    padding: 0;
+}
+li {
+    border-radius: 10px;
+    background-color: #333;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+canvas {
+    background-color: #333;
+    margin: 20px;
+    border-radius: 10px;
+}
+button {
+    background-color: #444;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin: 10px;
+    cursor: pointer;
+}
+button:hover {
+    background-color: #555;
+}
+#status {
+    color: #ffcc00;
+}
+    </style>
+</head>
+<body>    
+    <h2>Server stats</h2>
+    <ul id="server-stats">
+        <li>CPU usage: <span id="cpu-usage"></span></li>
+        <li>RAM usage: <span id="ram-usage"></span></li>
+        <li>Disk usage: <span id="disk-usage"></span></li>
+        <li>Server Uptime: <span id="uptime"></span></li>
+    </ul>
+    <canvas id="cpu-chart" width="400" height="100"></canvas>
+    <canvas id="ram-chart" width="400" height="100"></canvas>
+    <script>
+        const cpuChartCtx = document.getElementById('cpu-chart').getContext('2d');
+        const ramChartCtx = document.getElementById('ram-chart').getContext('2d');
+        const cpuChart = new Chart(cpuChartCtx, { type: 'line', data: { datasets: [{ label: 'CPU (%)', data: [] }] } });
+        const ramChart = new Chart(ramChartCtx, { type: 'line', data: { datasets: [{ label: 'RAM (GB)', data: [] }] } });
+
+        function fetchServerStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    document.getElementById('cpu-usage').textContent = stats.cpuUsage;
+                    document.getElementById('ram-usage').textContent = stats.ramUsage;
+                    document.getElementById('disk-usage').textContent = stats.diskUsage;
+                    document.getElementById('uptime').textContent = stats.uptime;
+
+                    const currentTime = new Date().getTime();
+                    cpuChart.data.labels.push(currentTime);
+                    cpuChart.data.datasets[0].data.push(stats.cpuUsage);
+
+                    ramChart.data.labels.push(currentTime);
+                    ramChart.data.datasets[0].data.push(stats.ramUsedGB);
+
+                    const fiveMinutesAgo = currentTime - (5 * 60 * 1000);
+                    while (cpuChart.data.labels[0] < fiveMinutesAgo) {
+                        cpuChart.data.labels.shift();
+                        cpuChart.data.datasets[0].data.shift();
+                    }
+                    while (ramChart.data.labels[0] < fiveMinutesAgo) {
+                        ramChart.data.labels.shift();
+                        ramChart.data.datasets[0].data.shift();
+                    }
+
+                    cpuChart.update();
+                    ramChart.update();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        setInterval(fetchServerStats, 2500);
+        fetchServerStats();
+    </script>
+</body>
+</html>
