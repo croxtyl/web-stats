@@ -75,10 +75,15 @@ async function getServerStats(cpuType = 'total', ramType = 'ram') {
     const uptimeMinutes = Math.floor((uptime % 3600) / 60);
     const uptimeSeconds = Math.round(uptime % 60);
     const cpuTemp = await si.cpuTemperature();
-    const cpuTempAvg = cpuTemp.main || 'N/A';
+    let cpuTempAvg;
+    if (cpuTemp.main !== null && !isNaN(cpuTemp.main)) {
+        cpuTempAvg = cpuTemp.main.toFixed(2);
+    } else {
+        cpuTempAvg = 'N/A';
+    }
     return {
         cpuUsage: Array.isArray(cpuUsage) ? cpuUsage : [parseFloat(cpuUsage.toFixed(2))],
-        cpuTemp: `${cpuTempAvg.toFixed(2)} °C`,
+        cpuTemp: `${cpuTempAvg} °C`,
         ramUsage: `${ramUsedGB.toFixed(2)} GB / ${ramTotalGB.toFixed(2)} GB (${ramUsagePercent.toFixed(2)}%)`,
         diskUsage,
         uptime: `${uptimeDays} days ${uptimeHours} hours ${uptimeMinutes} minutes ${uptimeSeconds} seconds`
