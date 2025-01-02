@@ -5,8 +5,7 @@ A project to display server/vps/dedicated/pc/anything statistics on a website li
 * RAM - GENERAL, SWAP or CACHE
 * Server uptime
 * Network usage
-* Memory usage on the server's main disk
-and soon will be more stats
+* Memory usage on the server's main disk and soon will be more stats
 ## Setup
 1. Download or clone this github repo
 2. Install packages using command: `npm install`
