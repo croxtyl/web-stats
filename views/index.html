@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Server Stats</title>
+    <link rel="stylesheet" href="/public/style.css" />
+    <script src="/public/chart.js"></script>
+    <script src="/public/chartjs-adapter-date-fns.js"></script>
+  </head>
+  <body>
+    <h2>Server Stats</h2>
+    <ul id="server-stats">
+      <li>Server Uptime: <span id="uptime"></span></li>
+      <li>Disk usage: <span id="disk-usage"></span></li>
+      <li>CPU Temperature: <span id="cpu-temp"></span></li>
+    </ul>
+    <label for="cpu-type">Select CPU Usage Type:</label>
+    <select id="cpu-type">
+      <option value="total">Total CPU Usage</option>
+      <option value="per-core">Per-Core CPU Usage</option>
+    </select>
+    <canvas id="cpu-chart" width="400" height="100"></canvas>
+    <label for="ram-type">Select Memory Usage Type:</label>
+    <select id="ram-type">
+      <option value="ram">RAM</option>
+      <option value="cache">CACHE</option>
+      <option value="swap">SWAP</option>
+    </select>
+    <canvas id="ram-chart" width="400" height="100"></canvas>
+    <label for="network-interface">Select Network Interface:</label>
+    <select id="network-interface"></select>
+    <canvas id="network-chart" width="400" height="100"></canvas>
+    <script>
+      const ctx = document.getElementById("network-chart").getContext("2d");
+      const networkChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "Download Speed (MB/s)",
+              data: [],
+              borderColor: "#3357FF",
+              fill: false,
+            },
+            {
+              label: "Upload Speed (MB/s)",
+              data: [],
+              borderColor: "#FF5733",
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            x: {
+              type: "time",
+              time: {
+                unit: "minute",
+              },
+              title: {
+                display: true,
+                text: "Time",
+              },
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Speed (MB/s)",
+              },
+            },
+          },
+        },
+      });
+      function updateNetworkInterfaces() {
+        fetch("/network-interfaces")
+          .then((response) => response.json())
+          .then((interfaces) => {
+            const interfaceSelect =
+              document.getElementById("network-interface");
+            interfaceSelect.innerHTML = interfaces
+              .map((iface) => `<option value="${iface}">${iface}</option>`)
+              .join("");
+          })
+          .catch((error) =>
+            console.error("Error fetching network interfaces:", error),
+          );
+      }
+      function fetchNetworkStats() {
+        const networkInterface =
+          document.getElementById("network-interface").value;
+        fetch(`/stats?interface=${networkInterface}`)
+          .then((response) => response.json())
+          .then((stats) => {
+            const currentTime = new Date();
+            networkChart.data.datasets[0].data.push({ x: currentTime, y: stats.downloadSpeed });
+            networkChart.data.datasets[1].data.push({ x: currentTime, y: stats.uploadSpeed });
+            if (networkChart.data.datasets[0].data.length > 60) {
+              networkChart.data.datasets.forEach((dataset) =>
+                dataset.data.shift(),
+              );
+            }
+            networkChart.update();
+          })
+          .catch((error) =>
+            console.error("Error fetching network stats:", error),
+          );
+      }
+      document .getElementById("network-interface") .addEventListener("change", function () {
+          networkChart.data.datasets.forEach((dataset) => (dataset.data = []));
+      });
+      updateNetworkInterfaces();
+      setInterval(fetchNetworkStats, 2500);
+      const cpuChartCtx = document.getElementById("cpu-chart").getContext("2d");
+      const ramChartCtx = document.getElementById("ram-chart").getContext("2d");
+      const colors = [ "#FF5733", "#33FF57", "#3357FF", "#F333FF", "#33F3FF", "#F3FF33", "#FF5733", "#FFC300", ];
+      let cpuChart = new Chart(cpuChartCtx, {
+        type: "line",
+        data: { datasets: [] },
+        options: {
+          scales: {
+            x: {
+              type: "time",
+              time: { unit: "minute" },
+              title: { display: true, text: "Time" },
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: { display: true, text: "CPU Usage (%)" },
+            },
+          },
+        },
+      });
+      let currentCpuType = "total";
+      let currentRamType = "ram";
+      function fetchServerStats() {
+        const cpuType = document.getElementById("cpu-type").value;
+        const ramType = document.getElementById("ram-type").value;
+        fetch(`/stats?cpuType=${cpuType}&ramType=${ramType}`)
+          .then((response) => response.json())
+          .then((stats) => {
+            document.getElementById("disk-usage").textContent = stats.diskUsage;
+            document.getElementById("uptime").textContent = stats.uptime;
+            document.getElementById("cpu-temp").textContent =
+              stats.cpuTemp || "N/A";
+            const currentTime = new Date();
+            if (currentRamType !== ramType) {
+              currentRamType = ramType;
+              ramChart.data.datasets.forEach((dataset) => (dataset.data = []));
+            }
+            const ramData = stats.ramUsage.split("/");
+            const ramUsedGB = parseFloat(ramData[0].trim().split(" ")[0]);
+            const ramTotalGB = parseFloat(ramData[1].trim().split(" ")[0]);
+            ramChart.data.datasets[0].data.push({ x: currentTime, y: ramUsedGB });
+            ramChart.data.datasets[1].data.push({ x: currentTime, y: ramTotalGB });
+            if (ramChart.data.datasets[0].data.length > 60) {
+              ramChart.data.datasets.forEach((dataset) => dataset.data.shift());
+            }
+            ramChart.update();
+            if (cpuType !== currentCpuType) {
+              cpuChart.data.datasets = [];
+              currentCpuType = cpuType;
+            }
+            if (cpuType === "total") {
+              if (cpuChart.data.datasets.length === 0) {
+                cpuChart.data.datasets.push({
+                  label: "Total CPU Usage",
+                  data: [],
+                  borderColor: colors[0],
+                  fill: false,
+                });
+              }
+              cpuChart.data.datasets[0].data.push({ x: currentTime, y: parseFloat(stats.cpuUsage[0]) });
+              if (cpuChart.data.datasets[0].data.length > 60) {
+                cpuChart.data.datasets[0].data.shift();
+              }
+            } else {
+              stats.cpuUsage.forEach((usage, index) => {
+                if (!cpuChart.data.datasets[index]) {
+                  cpuChart.data.datasets.push({
+                    label: `Core ${index + 1}`,
+                    data: [],
+                    borderColor: colors[index % colors.length],
+                    fill: false,
+                  });
+                }
+                cpuChart.data.datasets[index].data.push({ x: currentTime, y: usage });
+                if (cpuChart.data.datasets[index].data.length > 60) {
+                  cpuChart.data.datasets[index].data.shift();
+                }
+              });
+            }
+            cpuChart.update();
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+      document
+        .getElementById("cpu-type")
+        .addEventListener("change", function () {
+          currentCpuType = this.value;
+          cpuChart.data.datasets = [];
+        });
+      document
+        .getElementById("ram-type")
+        .addEventListener("change", function () {
+          currentRamType = this.value;
+          ramChart.data.datasets[0].data = [];
+          ramChart.data.datasets[1].data = [];
+        });
+      let ramChart = new Chart(ramChartCtx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "Memory Usage (GB)",
+              data: [],
+              borderColor: "#33FF57",
+              fill: false,
+            },
+            {
+              label: "Total Memory (GB)",
+              data: [],
+              borderColor: "#FF5733",
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            x: {
+              type: "time",
+              time: { unit: "minute" },
+              title: { display: true, text: "Time" },
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Memory Usage (GB)" },
+            },
+          },
+        },
+      });
+      setInterval(fetchServerStats, 2500);
+      fetchServerStats();
+    </script>
+  </body>
+</html>
