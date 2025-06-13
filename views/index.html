@@ -3,246 +3,909 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Server Stats</title>
+    <title>Server Stats Dashboard</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" />
     <link rel="stylesheet" href="/public/style.css" />
     <script src="/public/chart.js"></script>
-    <script src="/public/chartjs-adapter-date-fns.js"></script>
   </head>
   <body>
-    <h2>Server Stats</h2>
-    <ul id="server-stats">
-      <li>Server Uptime: <span id="uptime"></span></li>
-      <li>Disk usage: <span id="disk-usage"></span></li>
-      <li>CPU Temperature: <span id="cpu-temp"></span></li>
-    </ul>
-    <label for="cpu-type">Select CPU Usage Type:</label>
-    <select id="cpu-type">
-      <option value="total">Total CPU Usage</option>
-      <option value="per-core">Per-Core CPU Usage</option>
-    </select>
-    <canvas id="cpu-chart" width="400" height="100"></canvas>
-    <label for="ram-type">Select Memory Usage Type:</label>
-    <select id="ram-type">
-      <option value="ram">RAM</option>
-      <option value="cache">CACHE</option>
-      <option value="swap">SWAP</option>
-    </select>
-    <canvas id="ram-chart" width="400" height="100"></canvas>
-    <label for="network-interface">Select Network Interface:</label>
-    <select id="network-interface"></select>
-    <canvas id="network-chart" width="400" height="100"></canvas>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h1>Server Stats Dashboard</h1>
+        <div class="host-info">
+          <span id="hostname">Loading...</span>
+          <span id="uptime">Uptime: Loading...</span>
+        </div>
+      </header>
+      <!-- Dashboard of controls -->
+      <div class="dashboard-controls">
+        <div class="control-group stats-toggle">
+          <span class="control-label">Display Stats:</span>
+          <div class="toggle-group">
+            <label class="toggle-container">
+              <input type="checkbox" id="cpu-toggle" checked />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">CPU</span>
+            </label>
+            <label class="toggle-container">
+              <input type="checkbox" id="ram-toggle" checked />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">RAM</span>
+            </label>
+            <label class="toggle-container">
+              <input type="checkbox" id="disk-toggle" checked />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Disk</span>
+            </label>
+            <label class="toggle-container">
+              <input type="checkbox" id="network-toggle" checked />
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Network</span>
+            </label>
+          </div>
+        </div>
+        <div class="control-group refresh-control">
+          <label for="refresh-rate" class="control-label">Refresh Rate:</label>
+          <input type="number" id="refresh-rate" value="1000" min="500" max="5000" />
+          <span>ms</span>
+        </div>
+      </div>
+      <!-- Notification container -->
+      <div id="notification-container"></div>
+      <!-- Dashboard of charts -->
+      <div class="dashboard-grid">
+        <!-- First row -->
+        <div class="dashboard-row">
+          <!-- CPU chart -->
+          <div class="dashboard-card" id="cpu-card">
+            <div class="card-header">
+              <h2>CPU Usage</h2>
+              <div class="card-controls">
+                <select id="cpu-view">
+                  <option value="total">Total Usage</option>
+                  <option value="cores">Per Core</option>
+                </select>
+                <span class="temp-badge" id="cpu-temp">Temp: -- °C</span>
+              </div>
+            </div>
+            <div class="card-content">
+              <canvas id="cpu-chart"></canvas>
+            </div>
+          </div>
+          <!-- RAM chart -->
+          <div class="dashboard-card" id="ram-card">
+            <div class="card-header">
+              <h2>Memory Usage</h2>
+              <div class="card-controls">
+                <select id="ram-view">
+                  <option value="ram">RAM</option>
+                  <option value="cache">Cache</option>
+                  <option value="swap">Swap</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-content">
+              <canvas id="ram-chart"></canvas>
+              <div class="ram-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Used:</span>
+                  <span class="stat-value" id="ram-used">-- GB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Total:</span>
+                  <span class="stat-value" id="ram-total">-- GB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Usage:</span>
+                  <span class="stat-value" id="ram-percent">--%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Second row -->
+        <div class="dashboard-row">
+          <!-- Disk chart -->
+          <div class="dashboard-card" id="disk-card">
+            <div class="card-header">
+              <h2>Disk Usage</h2>
+            </div>
+            <div class="card-content">
+              <canvas id="disk-chart"></canvas>
+              <div class="disk-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Used:</span>
+                  <span class="stat-value" id="disk-used">-- GB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Total:</span>
+                  <span class="stat-value" id="disk-total">-- GB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Usage:</span>
+                  <span class="stat-value" id="disk-percent">--%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Network chart-->
+          <div class="dashboard-card" id="network-card">
+            <div class="card-header">
+              <h2>Network Traffic</h2>
+              <div class="card-controls">
+                <select id="network-interface"></select>
+              </div>
+            </div>
+            <div class="card-content">
+              <canvas id="network-chart"></canvas>
+              <div class="network-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Download:</span>
+                  <span class="stat-value" id="download-speed">-- MB/s</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Upload:</span>
+                  <span class="stat-value" id="upload-speed">-- MB/s</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Total RX:</span>
+                  <span class="stat-value" id="total-rx">-- GB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Total TX:</span>
+                  <span class="stat-value" id="total-tx">-- GB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
-      const ctx = document.getElementById("network-chart").getContext("2d");
-      const networkChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          datasets: [
-            {
-              label: "Download Speed (MB/s)",
-              data: [],
-              borderColor: "#3357FF",
-              fill: false,
-            },
-            {
-              label: "Upload Speed (MB/s)",
-              data: [],
-              borderColor: "#FF5733",
-              fill: false,
-            },
-          ],
-        },
-        options: {
-          scales: {
-            x: {
-              type: "time",
-              time: {
-                unit: "minute",
-              },
-              title: {
-                display: true,
-                text: "Time",
-              },
-            },
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: "Speed (MB/s)",
-              },
-            },
-          },
-        },
-      });
-      function updateNetworkInterfaces() {
-        fetch("/network-interfaces")
-          .then((response) => response.json())
-          .then((interfaces) => {
-            const interfaceSelect =
-              document.getElementById("network-interface");
-            interfaceSelect.innerHTML = interfaces
-              .map((iface) => `<option value="${iface}">${iface}</option>`)
-              .join("");
-          })
-          .catch((error) =>
-            console.error("Error fetching network interfaces:", error),
-          );
+      // WebSocket connection
+      let ws;
+      let refreshInterval = 1000;
+      let activeCharts = {
+        cpu: true,
+        ram: true,
+        disk: true,
+        network: true,
+      };
+      let requestCounter = 0;
+      const MAX_DATA_POINTS = 30;
+      let reconnectAttempts = 0;
+      const MAX_RECONNECT_ATTEMPTS = 5;
+      let chartsInitialized = false;
+
+      // Function for notifications
+      function showNotification(message, type = "error", duration = 5000) {
+        const container = document.getElementById("notification-container");
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+                  <span>${message}</span>
+                  <button class="notification-close">&times;</button>
+              `;
+        const closeBtn = notification.querySelector(".notification-close");
+        closeBtn.addEventListener("click", () => {
+          notification.classList.add("slide-out");
+          setTimeout(() => notification.remove(), 300);
+        });
+        container.appendChild(notification);
+        if (duration) {
+          setTimeout(() => {
+            notification.classList.add("slide-out");
+            setTimeout(() => notification.remove(), 300);
+          }, duration);
+        }
       }
-      function fetchNetworkStats() {
-        const networkInterface =
-          document.getElementById("network-interface").value;
-        fetch(`/stats?interface=${networkInterface}`)
-          .then((response) => response.json())
-          .then((stats) => {
-            const currentTime = new Date();
-            networkChart.data.datasets[0].data.push({ x: currentTime, y: stats.downloadSpeed });
-            networkChart.data.datasets[1].data.push({ x: currentTime, y: stats.uploadSpeed });
-            if (networkChart.data.datasets[0].data.length > 60) {
-              networkChart.data.datasets.forEach((dataset) =>
-                dataset.data.shift(),
-              );
-            }
-            networkChart.update();
-          })
-          .catch((error) =>
-            console.error("Error fetching network stats:", error),
-          );
-      }
-      document .getElementById("network-interface") .addEventListener("change", function () {
-          networkChart.data.datasets.forEach((dataset) => (dataset.data = []));
-      });
-      updateNetworkInterfaces();
-      setInterval(fetchNetworkStats, 2500);
-      const cpuChartCtx = document.getElementById("cpu-chart").getContext("2d");
-      const ramChartCtx = document.getElementById("ram-chart").getContext("2d");
-      const colors = [ "#FF5733", "#33FF57", "#3357FF", "#F333FF", "#33F3FF", "#F3FF33", "#FF5733", "#FFC300", ];
-      let cpuChart = new Chart(cpuChartCtx, {
-        type: "line",
-        data: { datasets: [] },
-        options: {
-          scales: {
-            x: {
-              type: "time",
-              time: { unit: "minute" },
-              title: { display: true, text: "Time" },
-            },
-            y: {
-              beginAtZero: true,
-              max: 100,
-              title: { display: true, text: "CPU Usage (%)" },
-            },
-          },
-        },
-      });
-      let currentCpuType = "total";
-      let currentRamType = "ram";
-      function fetchServerStats() {
-        const cpuType = document.getElementById("cpu-type").value;
-        const ramType = document.getElementById("ram-type").value;
-        fetch(`/stats?cpuType=${cpuType}&ramType=${ramType}`)
-          .then((response) => response.json())
-          .then((stats) => {
-            document.getElementById("disk-usage").textContent = stats.diskUsage;
-            document.getElementById("uptime").textContent = stats.uptime;
-            document.getElementById("cpu-temp").textContent =
-              stats.cpuTemp || "N/A";
-            const currentTime = new Date();
-            if (currentRamType !== ramType) {
-              currentRamType = ramType;
-              ramChart.data.datasets.forEach((dataset) => (dataset.data = []));
-            }
-            const ramData = stats.ramUsage.split("/");
-            const ramUsedGB = parseFloat(ramData[0].trim().split(" ")[0]);
-            const ramTotalGB = parseFloat(ramData[1].trim().split(" ")[0]);
-            ramChart.data.datasets[0].data.push({ x: currentTime, y: ramUsedGB });
-            ramChart.data.datasets[1].data.push({ x: currentTime, y: ramTotalGB });
-            if (ramChart.data.datasets[0].data.length > 60) {
-              ramChart.data.datasets.forEach((dataset) => dataset.data.shift());
-            }
-            ramChart.update();
-            if (cpuType !== currentCpuType) {
-              cpuChart.data.datasets = [];
-              currentCpuType = cpuType;
-            }
-            if (cpuType === "total") {
-              if (cpuChart.data.datasets.length === 0) {
-                cpuChart.data.datasets.push({
-                  label: "Total CPU Usage",
-                  data: [],
-                  borderColor: colors[0],
-                  fill: false,
-                });
-              }
-              cpuChart.data.datasets[0].data.push({ x: currentTime, y: parseFloat(stats.cpuUsage[0]) });
-              if (cpuChart.data.datasets[0].data.length > 60) {
-                cpuChart.data.datasets[0].data.shift();
-              }
+
+      // Initialize WebSocket logic
+      function initWebSocket() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const host = window.location.host;
+        ws = new WebSocket(`${protocol}//${host}`);
+
+        ws.onopen = () => {
+          console.log("WebSocket connected");
+          reconnectAttempts = 0;
+          showNotification("Connected to server", "success", 3000);
+          fetchNetworkInterfaces();
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            requestCounter++;
+            updateDashboard(data, requestCounter);
+          } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
+            showNotification("Error processing server data", "warning");
+          }
+        };
+
+        ws.onclose = (event) => {
+          if (event.wasClean) {
+            console.log(`WebSocket closed cleanly, code=${event.code}, reason=${event.reason}`);
+            showNotification("Disconnected from server", "warning");
+          } else {
+            console.log("WebSocket connection died");
+            showNotification("Connection lost - attempting to reconnect...", "error");
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              const reconnectDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+              console.log(`Reconnecting in ${reconnectDelay}ms...`);
+              setTimeout(initWebSocket, reconnectDelay);
+              reconnectAttempts++;
             } else {
-              stats.cpuUsage.forEach((usage, index) => {
-                if (!cpuChart.data.datasets[index]) {
-                  cpuChart.data.datasets.push({
-                    label: `Core ${index + 1}`,
-                    data: [],
-                    borderColor: colors[index % colors.length],
-                    fill: false,
-                  });
-                }
-                cpuChart.data.datasets[index].data.push({ x: currentTime, y: usage });
-                if (cpuChart.data.datasets[index].data.length > 60) {
-                  cpuChart.data.datasets[index].data.shift();
-                }
+              console.log("Max reconnection attempts reached");
+              showNotification("Failed to reconnect to server", "error");
+            }
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          showNotification("WebSocket connection error", "error");
+        };
+      }
+
+      // Fetch network interfaces
+      function fetchNetworkInterfaces() {
+        fetch("/network-interfaces")
+          .then((response) => {
+            if (!response.ok) throw new Error("Network response wasn't ok");
+            return response.json();
+          })
+          .then((interfaces) => {
+            const select = document.getElementById("network-interface");
+            select.innerHTML = interfaces.map((iface) => `<option value="${iface}">${iface}</option>`).join("");
+          })
+          .catch((error) => {
+            console.error("Error fetching network interfaces:", error);
+            // Refresh interfaces after delay
+            setTimeout(fetchNetworkInterfaces, 60000);
+          });
+      }
+
+      // Chart configurations
+      const chartConfigs = {
+        cpu: {
+          ctx: null,
+          chart: null,
+          colors: [
+            "#FF5733",
+            "#33FF57",
+            "#3357FF",
+            "#FF33F5",
+            "#F5FF33",
+            "#33FFF5",
+            "#8A2BE2",
+            "#FF6347",
+            "#7CFC00",
+            "#00CED1",
+            "#FFD700",
+            "#FF69B4",
+            "#9370DB",
+            "#3CB371",
+            "#00BFFF",
+            "#FF8C00",
+            "#9932CC",
+            "#8FBC8F",
+            "#483D8B",
+            "#2E8B57",
+            "#4169E1",
+            "#FF4500",
+            "#DA70D6",
+            "#20B2AA",
+            "#778899",
+            "#BDB76B",
+            "#FFA07A",
+            "#6A5ACD",
+            "#9ACD32",
+            "#FF1493",
+            "#00FA9A",
+            "#BA55D3",
+            "#1E90FF",
+            "#FFDAB9",
+          ],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 400,
+              easing: "easeOutQuart",
+            },
+            scales: {
+              x: {
+                type: "linear",
+                position: "bottom",
+                title: {
+                  display: true,
+                  text: "Request #",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                  stepSize: 5,
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+                min: 1,
+                max: MAX_DATA_POINTS,
+              },
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "CPU Usage (%)",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#e0e0e0",
+                  boxWidth: 12,
+                  padding: 20,
+                },
+              },
+            },
+          },
+        },
+        ram: {
+          ctx: null,
+          chart: null,
+          colors: ["#64b5f6", "#e57373"],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 400,
+              easing: "easeOutQuart",
+            },
+            scales: {
+              x: {
+                type: "linear",
+                position: "bottom",
+                title: {
+                  display: true,
+                  text: "Request #",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                  stepSize: 5,
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+                min: 1,
+                max: MAX_DATA_POINTS,
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Memory (GB)",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#e0e0e0",
+                  boxWidth: 12,
+                  padding: 20,
+                },
+              },
+            },
+          },
+        },
+        disk: {
+          ctx: null,
+          chart: null,
+          colors: ["#7986cb", "#9575cd"],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 400,
+              easing: "easeOutQuart",
+            },
+            scales: {
+              x: {
+                type: "linear",
+                position: "bottom",
+                title: {
+                  display: true,
+                  text: "Request #",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                  stepSize: 5,
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+                min: 1,
+                max: MAX_DATA_POINTS,
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Disk Space (GB)",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#e0e0e0",
+                  boxWidth: 12,
+                  padding: 20,
+                },
+              },
+            },
+          },
+        },
+        network: {
+          ctx: null,
+          chart: null,
+          colors: ["#4fc3f7", "#f06292"],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 400,
+              easing: "easeOutQuart",
+            },
+            scales: {
+              x: {
+                type: "linear",
+                position: "bottom",
+                title: {
+                  display: true,
+                  text: "Request #",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                  stepSize: 5,
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+                min: 1,
+                max: MAX_DATA_POINTS,
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Speed (MB/s)",
+                  color: "#b0bec5",
+                },
+                ticks: {
+                  color: "#b0bec5",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#e0e0e0",
+                  boxWidth: 12,
+                  padding: 20,
+                },
+              },
+            },
+          },
+        },
+      };
+
+      // Initialize charts
+      function initCharts() {
+        if (chartsInitialized) return;
+        // Get contexts
+        chartConfigs.cpu.ctx = document.getElementById("cpu-chart").getContext("2d");
+        chartConfigs.ram.ctx = document.getElementById("ram-chart").getContext("2d");
+        chartConfigs.disk.ctx = document.getElementById("disk-chart").getContext("2d");
+        chartConfigs.network.ctx = document.getElementById("network-chart").getContext("2d");
+        // CPU Chart
+        chartConfigs.cpu.chart = new Chart(chartConfigs.cpu.ctx, {
+          type: "line",
+          data: { datasets: [] },
+          options: chartConfigs.cpu.options,
+        });
+        // RAM Chart
+        chartConfigs.ram.chart = new Chart(chartConfigs.ram.ctx, {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                label: "Used (GB)",
+                data: [],
+                borderColor: chartConfigs.ram.colors[0],
+                backgroundColor: chartConfigs.ram.colors[0] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+              {
+                label: "Total (GB)",
+                data: [],
+                borderColor: chartConfigs.ram.colors[1],
+                backgroundColor: chartConfigs.ram.colors[1] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: chartConfigs.ram.options,
+        });
+        // Disk Chart
+        chartConfigs.disk.chart = new Chart(chartConfigs.disk.ctx, {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                label: "Used (GB)",
+                data: [],
+                borderColor: chartConfigs.disk.colors[0],
+                backgroundColor: chartConfigs.disk.colors[0] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+              {
+                label: "Total (GB)",
+                data: [],
+                borderColor: chartConfigs.disk.colors[1],
+                backgroundColor: chartConfigs.disk.colors[1] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: chartConfigs.disk.options,
+        });
+        // Network Chart
+        chartConfigs.network.chart = new Chart(chartConfigs.network.ctx, {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                label: "Download (MB/s)",
+                data: [],
+                borderColor: chartConfigs.network.colors[0],
+                backgroundColor: chartConfigs.network.colors[0] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+              {
+                label: "Upload (MB/s)",
+                data: [],
+                borderColor: chartConfigs.network.colors[1],
+                backgroundColor: chartConfigs.network.colors[1] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: chartConfigs.network.options,
+        });
+        chartsInitialized = true;
+      }
+
+      // Update dashboard with new data
+      function updateDashboard(data, requestNumber) {
+        if (!data) return;
+        // Initialize charts if not already done
+        if (!chartsInitialized) {
+          initCharts();
+        }
+        // Update system info
+        if (data.system) {
+          document.getElementById("hostname").textContent = data.system.hostname;
+          document.getElementById("uptime").textContent = `Uptime: ${data.system.uptime.formatted}`;
+        }
+        // Update CPU stats
+        if (data.cpu && activeCharts.cpu) {
+          updateCpuStats(data.cpu, requestNumber);
+        }
+        // Update RAM stats
+        if (data.ram && activeCharts.ram) {
+          updateRamStats(data.ram, requestNumber);
+        }
+        // Update Disk stats
+        if (data.disk && activeCharts.disk) {
+          updateDiskStats(data.disk, requestNumber);
+        }
+        // Update Network stats
+        if (data.network && activeCharts.network) {
+          updateNetworkStats(data.network, requestNumber);
+        }
+      }
+
+      // Update CPU stats
+      function updateCpuStats(cpuData, requestNumber) {
+        const chart = chartConfigs.cpu.chart;
+        const cpuView = document.getElementById("cpu-view").value;
+        // Update temperature
+        if (cpuData.temperature !== null) {
+          document.getElementById("cpu-temp").textContent = `Temp: ${cpuData.temperature} °C`;
+        }
+        if (cpuView === "total") {
+          // Update total CPU usage
+          if (chart.data.datasets.length === 0) {
+            chart.data.datasets.push({
+              label: "Total CPU Usage",
+              data: [],
+              borderColor: chartConfigs.cpu.colors[0],
+              backgroundColor: chartConfigs.cpu.colors[0] + "33",
+              fill: true,
+              tension: 0.1,
+              pointRadius: 0,
+            });
+          }
+          chart.data.datasets[0].data.push({
+            x: requestNumber,
+            y: cpuData.usage.total,
+          });
+          // Limit data points
+          if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
+            chart.data.datasets[0].data.shift();
+          }
+          // Remove core datasets if they exist
+          if (chart.data.datasets.length > 1) {
+            chart.data.datasets = [chart.data.datasets[0]];
+          }
+        } else {
+          // Update per-core CPU usage
+          cpuData.usage.cores.forEach((coreUsage, index) => {
+            if (!chart.data.datasets[index]) {
+              chart.data.datasets.push({
+                label: `Core ${index + 1}`,
+                data: [],
+                borderColor: chartConfigs.cpu.colors[index % chartConfigs.cpu.colors.length],
+                backgroundColor: chartConfigs.cpu.colors[index % chartConfigs.cpu.colors.length] + "33",
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
               });
             }
-            cpuChart.update();
-          })
-          .catch((error) => console.error("Error:", error));
+            chart.data.datasets[index].data.push({
+              x: requestNumber,
+              y: coreUsage,
+            });
+            // Limit data points
+            if (chart.data.datasets[index].data.length > MAX_DATA_POINTS) {
+              chart.data.datasets[index].data.shift();
+            }
+          });
+
+          if (chart.data.datasets.length > cpuData.usage.cores.length) {
+            chart.data.datasets = chart.data.datasets.slice(0, cpuData.usage.cores.length);
+          }
+        }
+
+        const minX = Math.max(1, requestNumber - MAX_DATA_POINTS + 1);
+        chart.options.scales.x.min = minX;
+        chart.options.scales.x.max = requestNumber;
+        chart.update();
       }
-      document
-        .getElementById("cpu-type")
-        .addEventListener("change", function () {
-          currentCpuType = this.value;
-          cpuChart.data.datasets = [];
+
+      // Update RAM stats
+      function updateRamStats(ramData, requestNumber) {
+        const ramView = document.getElementById("ram-view").value;
+        const chart = chartConfigs.ram.chart;
+        let usedGB, totalGB, percent;
+        switch (ramView) {
+          case "cache":
+            usedGB = ramData.cache.used / (1024 * 1024 * 1024);
+            totalGB = ramData.ram.total / (1024 * 1024 * 1024);
+            percent = ramData.cache.percent;
+            break;
+          case "swap":
+            usedGB = ramData.swap.used / (1024 * 1024 * 1024);
+            totalGB = ramData.swap.total / (1024 * 1024 * 1024);
+            percent = ramData.swap.percent;
+            break;
+          default: // 'ram'
+            usedGB = ramData.ram.used / (1024 * 1024 * 1024);
+            totalGB = ramData.ram.total / (1024 * 1024 * 1024);
+            percent = ramData.ram.percent;
+        }
+        // Update text stats
+        document.getElementById("ram-used").textContent = `${usedGB.toFixed(2)} GB`;
+        document.getElementById("ram-total").textContent = `${totalGB.toFixed(2)} GB`;
+        document.getElementById("ram-percent").textContent = `${percent.toFixed(2)}%`;
+        // Update chart data
+        chart.data.datasets[0].data.push({ x: requestNumber, y: usedGB });
+        chart.data.datasets[1].data.push({ x: requestNumber, y: totalGB });
+        // Limit data points
+        if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
+          chart.data.datasets[0].data.shift();
+          chart.data.datasets[1].data.shift();
+        }
+        // Update chart labels based on view
+        chart.data.datasets[0].label = `${ramView.toUpperCase()} Used (GB)`;
+        chart.data.datasets[1].label = `${ramView === "swap" ? "Swap" : "RAM"} Total (GB)`;
+
+        const minX = Math.max(1, requestNumber - MAX_DATA_POINTS + 1);
+        chart.options.scales.x.min = minX;
+        chart.options.scales.x.max = requestNumber;
+        chart.update();
+      }
+
+      // Update Disk stats
+      function updateDiskStats(diskData, requestNumber) {
+        if (!diskData) return;
+        const chart = chartConfigs.disk.chart;
+        const usedGB = diskData.used / (1024 * 1024 * 1024);
+        const totalGB = diskData.total / (1024 * 1024 * 1024);
+        const percent = diskData.percent;
+        // Update text stats
+        document.getElementById("disk-used").textContent = `${usedGB.toFixed(2)} GB`;
+        document.getElementById("disk-total").textContent = `${totalGB.toFixed(2)} GB`;
+        document.getElementById("disk-percent").textContent = `${percent.toFixed(2)}%`;
+        // Update chart data
+        chart.data.datasets[0].data.push({ x: requestNumber, y: usedGB });
+        chart.data.datasets[1].data.push({ x: requestNumber, y: totalGB });
+        // Limit data points
+        if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
+          chart.data.datasets[0].data.shift();
+          chart.data.datasets[1].data.shift();
+        }
+
+        const minX = Math.max(1, requestNumber - MAX_DATA_POINTS + 1);
+        chart.options.scales.x.min = minX;
+        chart.options.scales.x.max = requestNumber;
+        chart.update();
+      }
+
+      // Update Network stats
+      function updateNetworkStats(networkData, requestNumber) {
+        const chart = chartConfigs.network.chart;
+        const interfaceSelect = document.getElementById("network-interface");
+        const selectedInterface = interfaceSelect.value;
+        if (!selectedInterface || !networkData[selectedInterface]) return;
+        const ifaceData = networkData[selectedInterface];
+        const downloadSpeed = ifaceData.downloadSpeed;
+        const uploadSpeed = ifaceData.uploadSpeed;
+        const totalRxGB = ifaceData.rx_bytes / (1024 * 1024 * 1024);
+        const totalTxGB = ifaceData.tx_bytes / (1024 * 1024 * 1024);
+        // Update text stats
+        document.getElementById("download-speed").textContent = `${downloadSpeed.toFixed(2)} MB/s`;
+        document.getElementById("upload-speed").textContent = `${uploadSpeed.toFixed(2)} MB/s`;
+        document.getElementById("total-rx").textContent = `${totalRxGB.toFixed(2)} GB`;
+        document.getElementById("total-tx").textContent = `${totalTxGB.toFixed(2)} GB`;
+        // Update chart data
+        chart.data.datasets[0].data.push({ x: requestNumber, y: downloadSpeed });
+        chart.data.datasets[1].data.push({ x: requestNumber, y: uploadSpeed });
+        // Limit data points
+        if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
+          chart.data.datasets[0].data.shift();
+          chart.data.datasets[1].data.shift();
+        }
+
+        const minX = Math.max(1, requestNumber - MAX_DATA_POINTS + 1);
+        chart.options.scales.x.min = minX;
+        chart.options.scales.x.max = requestNumber;
+        chart.update();
+      }
+
+      // Toggle chart visibility
+      function toggleChart(chartName, show) {
+        const card = document.getElementById(`${chartName}-card`);
+        if (card) {
+          if (show) {
+            card.style.display = "flex";
+            card.style.height = "auto";
+            void card.offsetHeight;
+            // Reset the chart canvas size
+            const canvas = card.querySelector("canvas");
+            if (canvas) {
+              canvas.style.height = "250px";
+              canvas.style.width = "100%";
+              if (chartConfigs[chartName].chart) {
+                chartConfigs[chartName].chart.resize();
+              }
+            }
+          } else {
+            card.style.display = "none";
+          }
+        }
+        activeCharts[chartName] = show;
+      }
+
+      // Initialize event listeners
+      function initEventListeners() {
+        // Checkbox toggles
+        document.getElementById("cpu-toggle").addEventListener("change", function () {
+          toggleChart("cpu", this.checked);
         });
-      document
-        .getElementById("ram-type")
-        .addEventListener("change", function () {
-          currentRamType = this.value;
-          ramChart.data.datasets[0].data = [];
-          ramChart.data.datasets[1].data = [];
+        document.getElementById("ram-toggle").addEventListener("change", function () {
+          toggleChart("ram", this.checked);
         });
-      let ramChart = new Chart(ramChartCtx, {
-        type: "line",
-        data: {
-          datasets: [
-            {
-              label: "Memory Usage (GB)",
-              data: [],
-              borderColor: "#33FF57",
-              fill: false,
-            },
-            {
-              label: "Total Memory (GB)",
-              data: [],
-              borderColor: "#FF5733",
-              fill: false,
-            },
-          ],
-        },
-        options: {
-          scales: {
-            x: {
-              type: "time",
-              time: { unit: "minute" },
-              title: { display: true, text: "Time" },
-            },
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: "Memory Usage (GB)" },
-            },
-          },
-        },
-      });
-      setInterval(fetchServerStats, 2500);
-      fetchServerStats();
+        document.getElementById("disk-toggle").addEventListener("change", function () {
+          toggleChart("disk", this.checked);
+        });
+        document.getElementById("network-toggle").addEventListener("change", function () {
+          toggleChart("network", this.checked);
+        });
+        // CPU view selector
+        document.getElementById("cpu-view").addEventListener("change", function () {
+          if (chartConfigs.cpu.chart) {
+            chartConfigs.cpu.chart.data.datasets = [];
+            chartConfigs.cpu.chart.update();
+          }
+        });
+        // RAM view selector
+        document.getElementById("ram-view").addEventListener("change", function () {
+          if (chartConfigs.ram.chart) {
+            chartConfigs.ram.chart.data.datasets[0].data = [];
+            chartConfigs.ram.chart.data.datasets[1].data = [];
+            chartConfigs.ram.chart.update();
+          }
+        });
+        // Network interface selector
+        document.getElementById("network-interface").addEventListener("change", function () {
+          if (chartConfigs.network.chart) {
+            chartConfigs.network.chart.data.datasets[0].data = [];
+            chartConfigs.network.chart.data.datasets[1].data = [];
+            chartConfigs.network.chart.update();
+          }
+        });
+        // Refresh rate control
+        document.getElementById("refresh-rate").addEventListener("change", function () {
+          refreshInterval = parseInt(this.value) || 1000;
+          if (refreshInterval < 500) refreshInterval = 500;
+          if (refreshInterval > 5000) refreshInterval = 5000;
+        });
+      }
+
+      // Initialize the dashboard
+      function initDashboard() {
+        initCharts();
+        initEventListeners();
+        initWebSocket();
+      }
+
+      // Start the dashboard after load website
+      document.addEventListener("DOMContentLoaded", initDashboard);
     </script>
   </body>
 </html>

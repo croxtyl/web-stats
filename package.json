@@ -1,7 +1,17 @@
 {
+  "name": "web-stats",
+  "version": "2.0.0",
+  "description": "Real-time web based stats panel of linux server",
+  "main": "index.js",
   "dependencies": {
-    "express": "^4.21.2",
-    "nocrasher": "^1.0.0",
-    "systeminformation": "^5.24.6"
-  }
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "systeminformation": "^5.27.1",
+    "ws": "^8.18.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "croxtyl",
+  "license": "ISC"
 }
